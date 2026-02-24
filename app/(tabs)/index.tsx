@@ -1,60 +1,62 @@
+import { DateSelection } from "@/components/love-app/DateSelection";
+import { ImagePickerButton } from "@/components/love-app/ImagePickerButton";
+import { PartnerProfile } from "@/components/love-app/PartnerProfile";
+import { TimeBox } from "@/components/love-app/TimeBox";
 import { Box } from "@/components/ui/box";
 import { Card } from "@/components/ui/card";
 import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import React, { useEffect, useState } from "react";
-import { ImageBackground, ScrollView } from "react-native";
-
-// Import Custom Components
-import { DateSelection } from "@/components/love-app/DateSelection";
-import { ImagePickerButton } from "@/components/love-app/ImagePickerButton";
-import { PartnerProfile } from "@/components/love-app/PartnerProfile";
-import { TimeBox } from "@/components/love-app/TimeBox";
-
 import { loadAppData, saveAppData } from "@/utils/storage";
+import {
+  differenceInDays,
+  differenceInMonths,
+  differenceInYears,
+  startOfDay,
+} from "date-fns";
+import React, { useEffect, useState } from "react";
+import {
+  Animated,
+  ImageBackground,
+  Text as RNText,
+  ScrollView,
+  View,
+} from "react-native";
 
 export default function LoveApp() {
+  const AnimatedText = Animated.createAnimatedComponent(Text);
   const [partner1, setPartner1] = useState({
     name: "Min Min",
     birthDate: "2000-01-01",
     gender: "Male",
-    image: null, // ပုံသိမ်းဖို့
+    image: null,
   });
-
   const [partner2, setPartner2] = useState({
     name: "Su Su",
     birthDate: "2001-05-12",
     gender: "Female",
-    image: null, // ပုံသိမ်းဖို့
+    image: null,
   });
-
   const [anniversaryDate, setAnniversaryDate] = useState<Date>(
     new Date("2023-12-25"),
   );
-
-  // const [showEditP1, setShowEditP1] = useState(false);
-  // const [showEditP2, setShowEditP2] = useState(false);
-
   const [isEditingP1, setIsEditingP1] = useState(false);
   const [isEditingP2, setIsEditingP2] = useState(false);
-
-  // Background Image State
+  const [isLoaded, setIsLoaded] = useState(false);
   const [bgImage, setBgImage] = useState(
     "https://images.unsplash.com/photo-1518199266791-5375a83190b7",
   );
 
-  const [isLoaded, setIsLoaded] = useState(false); // App ready ဖြစ်မဖြစ် စစ်ရန်
+  const scaleAnim = React.useRef(new Animated.Value(1)).current;
 
-  // --- ၁။ App စဖွင့်ချိန်မှာ ဒေတာ ပြန်ဆွဲထုတ်ခြင်း ---
   useEffect(() => {
     const initData = async () => {
       const savedData = await loadAppData();
       if (savedData) {
         setPartner1(savedData.partner1);
         setPartner2(savedData.partner2);
-        setAnniversaryDate(new Date(savedData.anniversaryDate)); // String ကို Date object ပြန်ပြောင်းပါ
+        setAnniversaryDate(new Date(savedData.anniversaryDate));
         setBgImage(savedData.bgImage);
       }
       setIsLoaded(true);
@@ -62,63 +64,58 @@ export default function LoveApp() {
     initData();
   }, []);
 
-  // --- ၂။ State တွေ ပြောင်းတိုင်း အလိုအလျောက် သိမ်းဆည်းခြင်း ---
+  useEffect(() => {
+    // Animation Loop ကို တိတိကျကျ စတင်ပါ
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(scaleAnim, {
+          toValue: 1.4, // ၁.၄ ဆ အထိ ကြီးမယ်
+          duration: 800,
+          useNativeDriver: false, // တွက်ချက်မှုကို JS ဘက်ကပဲ အရင်စမ်းမယ်
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: false,
+        }),
+      ]),
+    );
+
+    pulse.start();
+
+    return () => pulse.stop(); // Component ပိတ်ရင် ရပ်မယ်
+  }, []);
+
   useEffect(() => {
     if (isLoaded) {
-      // ပထမဆုံး load လုပ်ချိန်မှာ save မဖြစ်စေရန်
-      const dataToSave = {
+      saveAppData({
         partner1,
         partner2,
-        anniversaryDate: anniversaryDate.toISOString(), // Date ကို string အဖြစ် သိမ်းရပါမယ်
+        anniversaryDate: anniversaryDate.toISOString(),
         bgImage,
-      };
-      saveAppData(dataToSave);
+      });
     }
   }, [partner1, partner2, anniversaryDate, bgImage, isLoaded]);
 
-  if (!isLoaded) return null; // ဒေတာတွေ မလာသေးခင် ဘာမှမပြသေးဘဲ စောင့်ပါ
-
-  // Time Logic (ဒီမှာပဲ ထားနိုင်ပါတယ်)
-  const calculateDuration = (startDate: Date) => {
-    const now = new Date();
-
-    let years = now.getFullYear() - startDate.getFullYear();
-    let months = now.getMonth() - startDate.getMonth();
-    let days = now.getDate() - startDate.getDate();
-
-    // ရက်မပြည့်သေးရင် လထဲက တစ်လနုတ်ပြီး ရက်ပြန်ပေါင်းမယ်
-    if (days < 0) {
-      months--;
-      // ရှေ့လမှာ ရက်ပေါင်းဘယ်လောက်ရှိလဲ ရှာပြီး ပေါင်းပေးတာ
-      const lastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
-      days += lastMonth.getDate();
-    }
-
-    // လ အနှုတ်ပြနေရင် နှစ်ထဲက တစ်နှစ်နုတ်ပြီး လပေါင်းမယ်
-    if (months < 0) {
-      years--;
-      months += 12;
-    }
-
-    const diffInMs = now.getTime() - startDate.getTime();
-    const totalDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
-
-    return {
-      totalDays,
-      years,
-      months,
-      days,
-    };
+  const calculateTimeDifference = (selectedDate: Date) => {
+    const today = startOfDay(new Date());
+    const startDate = startOfDay(selectedDate);
+    if (startDate > today)
+      return { totalDays: 0, years: 0, months: 0, days: 0 };
+    const totalDays = differenceInDays(today, startDate);
+    const years = differenceInYears(today, startDate);
+    const dateAfterYears = new Date(startDate);
+    dateAfterYears.setFullYear(startDate.getFullYear() + years);
+    const months = differenceInMonths(today, dateAfterYears);
+    const dateAfterMonths = new Date(dateAfterYears);
+    dateAfterMonths.setMonth(dateAfterYears.getMonth() + months);
+    const days = differenceInDays(today, dateAfterMonths);
+    return { totalDays, years, months, days };
   };
 
-  const timeLeft = calculateDuration(anniversaryDate);
+  if (!isLoaded) return null;
 
-  //   const timer = setInterval(
-  //     () => setTimeLeft(calculateDuration(anniversaryDate)),
-  //     1000,
-  //   );
-  //   return () => clearInterval(timer);
-  // }, [anniversaryDate]);
+  const timeLeft = calculateTimeDifference(anniversaryDate);
 
   return (
     <Box className="flex-1">
@@ -126,60 +123,78 @@ export default function LoveApp() {
         key={bgImage}
         source={{ uri: bgImage }}
         className="flex-1 justify-center items-center p-4"
+        blurRadius={10}
       >
-        <Box className="absolute inset-0 bg-black/30" />
-        <ScrollView className="w-full mt-10">
+        <Box className="absolute inset-0 bg-black/40" />
+        <ScrollView
+          className="w-full mt-10"
+          showsVerticalScrollIndicator={false}
+        >
           <VStack space="xl" className="items-center pb-20">
-            <Card className="bg-white/80 backdrop-blur-md p-6 rounded-[40px] w-full items-center shadow-xl">
-              <Heading size="md" className="text-pink-600 mb-2 italic">
+            <Card className="bg-white/20 backdrop-blur-lg p-6 rounded-[40px] w-full items-center shadow-2xl border border-white/20">
+              <Heading
+                size="md"
+                className="text-pink-400 mb-2 italic font-semibold"
+              >
                 We've been together for
               </Heading>
-              <Text className="text-5xl font-black text-slate-800">
+              <Text className="text-6xl font-black text-white">
                 {timeLeft.totalDays}
               </Text>
-              <Text className="text-xl font-bold text-slate-500 uppercase">
+              <Text className="text-sm font-bold text-white/60 uppercase tracking-widest mt-1">
                 Days
               </Text>
-
-              <HStack space="md" className="mt-6 flex-wrap justify-center">
+              <HStack space="md" className="mt-8 flex-wrap justify-center">
                 <TimeBox label="Years" value={timeLeft.years} />
                 <TimeBox label="Months" value={timeLeft.months} />
                 <TimeBox label="Days" value={timeLeft.days} />
               </HStack>
             </Card>
 
-            <HStack className="w-full justify-between px-4 mt-6 items-start">
-              <PartnerProfile
-                person={partner1}
-                isEditing={isEditingP1}
-                onUpdate={setPartner1}
-                onToggleEdit={() => setIsEditingP1(!isEditingP1)}
-              />
+            <VStack className="w-full items-center mt-6">
+              <HStack className="w-full justify-between px-2 items-start">
+                <PartnerProfile
+                  person={partner1}
+                  isEditing={isEditingP1}
+                  onUpdate={setPartner1}
+                  onToggleEdit={() => setIsEditingP1(!isEditingP1)}
+                />
+                <PartnerProfile
+                  person={partner2}
+                  isEditing={isEditingP2}
+                  onUpdate={setPartner2}
+                  onToggleEdit={() => setIsEditingP2(!isEditingP2)}
+                />
+              </HStack>
 
-              <Text className="text-4xl mt-6 text-black">❤️</Text>
-
-              <PartnerProfile
-                person={partner2}
-                isEditing={isEditingP2}
-                onUpdate={setPartner2}
-                onToggleEdit={() => setIsEditingP2(!isEditingP2)}
-              />
-            </HStack>
+              {/* နှလုံးသား Animation အပိုင်း */}
+              <View
+                style={{
+                  height: 120,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginTop: 20,
+                }}
+              >
+                <Animated.View
+                  style={{
+                    transform: [{ scale: scaleAnim }], // scaleAnim ကို ဒီမှာ ချိတ်ပါတယ်
+                    zIndex: 10,
+                  }}
+                >
+                  <RNText style={{ fontSize: 70 }}>❤️</RNText>
+                </Animated.View>
+              </View>
+            </VStack>
           </VStack>
         </ScrollView>
 
-        <VStack className="w-full px-4">
-          {/* Date Picker Button */}
+        <VStack className="w-full px-4 mb-4" space="md">
           <DateSelection
-            label="Anniversary Day"
+            label="Anniversary"
             date={anniversaryDate}
-            onDateChange={(newDate) => {
-              // console.log("Main Screen received date:", newDate);
-              setAnniversaryDate(newDate);
-            }}
+            onDateChange={(newDate) => setAnniversaryDate(newDate)}
           />
-
-          {/* Image Picker Button */}
           <ImagePickerButton onImageSelected={(uri) => setBgImage(uri)} />
         </VStack>
       </ImageBackground>

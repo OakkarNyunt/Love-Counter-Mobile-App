@@ -56,11 +56,11 @@ export const DateSelection: React.FC<DateSelectionProps> = ({
 
       {show && (
         <DateTimePicker
-          value={date instanceof Date ? date : new Date()}
+          value={date instanceof Date && date < new Date() ? date : new Date()}
           mode="date"
           display={Platform.OS === "ios" ? "spinner" : "default"}
           onChange={onChange}
-          maximumDate={new Date()} // အနာဂတ် ရွေးမရအောင်
+          maximumDate={new Date()} // ဒီကောင်က အနာဂတ်ကို ရွေးမရအောင် ပိတ်ပေးထားပါတယ်
         />
       )}
     </HStack>
